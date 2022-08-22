@@ -1,26 +1,7 @@
 version: '2.4'
 
 services:
-  artifactory:
-    image: docker.bintray.io/jfrog/artifactory-jcr:7.39.4
-    container_name: artifactory
-    ports:
-      - "8081:8081"
-      - "8082:8082"
-    volumes:
-      - ./artifactory/:/artifactory_extra_conf/
-    restart: always
-    healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8082/artifactory/api/system/ping"]
-        start_period: 30s
-        interval: 5s
-        timeout: 10s
-        retries: 30
-
   jenkins:
-    depends_on:
-      artifactory:
-        condition: service_healthy
     build: jenkins_controller
     container_name: jenkins
     ports:
@@ -51,4 +32,26 @@ services:
     container_name: sonarqube
     ports:
       - "9000:9000"
+    restart: always
+
+  selenium_hub:
+    depends_on:
+      - jenkins
+    image: selenium/hub
+    container_name: selenium_hub
+    ports:
+    - "4442:4442"
+    - "4443:4443"
+    - "4444:4444"
+    restart: always
+
+  firefox:
+    image: selenium/node-firefox
+    container_name: firefox
+    depends_on:
+      - selenium_hub
+    environment:
+    - SE_EVENT_BUS_HOST=selenium_hub
+    - SE_EVENT_BUS_PUBLISH_PORT=4442
+    - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
     restart: always

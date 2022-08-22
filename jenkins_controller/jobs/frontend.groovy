@@ -7,7 +7,7 @@ pipelineJob('frontend') {
                         credentials("")
                         url("https://github.com/Panda-Academy-Workshops/Frontend.git")
                     }
-                    branches('final')
+                    branches('aws')
                     scriptPath('Jenkinsfile')
                 }
             }
