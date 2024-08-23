@@ -3,5 +3,5 @@ This repository contains the Infrastructure and Configuration as Code components
 
 * jenkins_controller - main Jenkins server, configured as code
 * jenkins_agent - Jenkins agent configured as code
-* artifactory - basic setup with added docker registry 
+* gitlab - basic setup with runner 
 * docker-compose - contains whole laboratory docker setup

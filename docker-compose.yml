@@ -1,36 +1,17 @@
-version: '2.4'
-
 services:
-  artifactory:
-    image: docker.bintray.io/jfrog/artifactory-jcr:7.39.4
-    container_name: artifactory
-    ports:
-      - "8081:8081"
-      - "8082:8082"
-    volumes:
-      - ./artifactory/:/artifactory_extra_conf/
-    restart: always
-    healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8082/artifactory/api/system/ping"]
-        start_period: 30s
-        interval: 5s
-        timeout: 10s
-        retries: 30
-
   jenkins:
-    depends_on:
-      artifactory:
-        condition: service_healthy
     build: jenkins_controller
     container_name: jenkins
     ports:
       - "50000:50000"
       - "8880:8080"
     volumes:
-      - ./jenkins_controller/casc.yml:/usr/share/jenkins/ref/casc.yml
+      - ./jenkins_controller/jenkins.yaml:/usr/share/jenkins/ref/jenkins.yaml
       - ./jenkins_controller/jobs:/usr/share/jenkins/ref/jobs
     restart: always
-
+    networks:
+      - shared_network
+  
   jenkins_agent:
     depends_on:
       - jenkins
@@ -38,17 +19,44 @@ services:
     build: jenkins_agent
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    expose:
-      - 22
+    ports:
+      - "2222:22"
     environment:
       - JENKINS_AGENT_SSH_PUBKEY=ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCaJxXl+C4GsmIcrsXQ+mqS/t9SNsFrtj5LffdnNr8+9a40UUHDX1mKe26U8oSarCciLYEtXWsWtl1VmQS6JAdVI5vZKS2J0Nt6oe+AH9y2PhL6wtqUsel2aJHUk8w13Dfkt+w6tZBQxCuzBDvWRt6hsprVuJvWoICMZanVOoXb+BfJx9133mG/uviF/rgtEqn5CqTbHWN1cUs+jei0GOlfyQr/GR7P5cP6baxe5yxCebohlgbYvDrwUT2ZBSlJHIaqbrbeBF/yigCcWCA9z46PubKc/qIcDY5qeFuldy0mqEdpMILDLjcrtidnp4wvRa8cxZl4w9fNYGwK8C56/b9n
     restart: always
-
-  sonarqube:
-    depends_on:
-      - jenkins
-    image: sonarqube:9.2.4-community
-    container_name: sonarqube
+    networks:
+      - shared_network
+  
+  gitlab:
+    image: 'gitlab/gitlab-ce:latest'
+    container_name: gitlab
     ports:
-      - "9000:9000"
+      - '8929:80'
+      - '2224:22'
+    volumes:
+      - './gitlab/config:/etc/gitlab'
+      - './gitlab/logs:/var/log/gitlab'
+      - './gitlab/data:/var/opt/gitlab'
     restart: always
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        gitlab_rails['initial_root_password'] = 'pandapanda'
+        #        external_url 'http://192.168.44.44:8929'
+    networks:
+      - shared_network
+  
+  gitlab-runner:
+    image: 'gitlab/gitlab-runner:latest'
+    container_name: gitlab-runner
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - './gitlab-runner:/etc/gitlab-runner'
+    restart: always
+    networks:
+      - shared_network
+    depends_on:
+      - gitlab
+
+networks:
+  shared_network:
+    name: shared_network
